@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深空制图仪 · DEEP SPACE CARTOGRAPH</title>
+<style>
+  :root {
+    --ink: #e8eef7;
+    --ink-dim: #8fa2bd;
+    --ink-faint: #5a6b85;
+    --gold: #ffd27a;
+    --bg: #030614;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+  body { font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+  #stage { position: fixed; inset: 0; display: block; }
+
+  /* ---------- 顶部居中标签 ---------- */
+  .top-label {
+    position: fixed; top: 22px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; letter-spacing: 6px; color: var(--ink-faint);
+    white-space: nowrap; user-select: none;
+  }
+
+  /* ---------- 左上标题 ---------- */
+  .brand { position: fixed; top: 26px; left: 30px; user-select: none; }
+  .brand h1 {
+    font-family: "Songti SC", "STSong", "SimSun", serif;
+    font-size: 21px; font-weight: 600; letter-spacing: 10px;
+    color: var(--ink); text-shadow: 0 0 18px rgba(120,160,255,.35);
+  }
+  .brand p { margin-top: 7px; font-size: 10px; letter-spacing: 4px; color: var(--ink-dim); }
+
+  /* ---------- 左侧遥测面板 ---------- */
+  .panel { position: fixed; top: 118px; left: 30px; width: 190px; user-select: none; }
+  .row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 4.5px 0; border-bottom: 1px solid rgba(140,165,205,.08);
+  }
+  .row .k { font-size: 10px; letter-spacing: 3px; color: var(--ink-faint); }
+  .row .v {
+    font-family: "SF Mono", "Menlo", monospace;
+    font-size: 11.5px; color: var(--ink); letter-spacing: .5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .row .v.alert { color: var(--gold); text-shadow: 0 0 10px rgba(255,190,90,.5); }
+
+  /* ---------- 城市聚光标签 ---------- */
+  .city-tag {
+    position: fixed; bottom: 15%; left: 50%; transform: translateX(-50%);
+    text-align: center; pointer-events: none; user-select: none;
+    opacity: 0; transition: opacity .8s ease;
+  }
+  .city-tag.show { opacity: 1; }
+  .city-tag .leader {
+    color: var(--ink-dim); font-size: 12px; letter-spacing: 8px;
+    margin-bottom: 10px;
+  }
+  .city-tag .zh {
+    font-family: "Songti SC", "STSong", "SimSun", serif;
+    font-size: 40px; letter-spacing: 18px; text-indent: 18px;
+    color: var(--ink); text-shadow: 0 0 30px rgba(140,180,255,.45);
+  }
+  .city-tag .en {
+    margin-top: 6px; font-size: 11px; letter-spacing: 10px; text-indent: 10px;
+    color: var(--ink-dim);
+  }
+
+  /* ---------- 事件标题卡（流星雨） ---------- */
+  .event-card {
+    position: fixed; top: 42%; left: 50%; transform: translate(-50%, -50%);
+    text-align: center; pointer-events: none; user-select: none;
+    opacity: 0; transition: opacity 1.1s ease;
+  }
+  .event-card.show { opacity: 1; }
+  .event-card .zh {
+    font-family: "Songti SC", "STSong", "SimSun", serif;
+    font-size: 34px; letter-spacing: 22px; text-indent: 22px;
+    color: var(--ink); text-shadow: 0 0 34px rgba(150,190,255,.55);
+  }
+  .event-card .en {
+    margin-top: 10px; font-size: 11px; letter-spacing: 12px; text-indent: 12px;
+    color: var(--ink-dim);
+  }
+
+  /* ---------- 底部状态栏 ---------- */
+  .status {
+    position: fixed; left: 30px; right: 30px; bottom: 16px;
+    font-size: 10px; letter-spacing: 2px; color: var(--ink-faint);
+    user-select: none; overflow: hidden;
+  }
+  .status .line2 { margin-top: 4px; white-space: nowrap; }
+  .status .marquee { display: inline-block; animation: scroll 60s linear infinite; }
+  @keyframes scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .status .bolt { color: var(--gold); }
+
+  /* ---------- 提示 ---------- */
+  .hint {
+    position: fixed; right: 30px; bottom: 16px; font-size: 10px;
+    letter-spacing: 2px; color: var(--ink-faint); user-select: none;
+  }
+
+  /* ---------- 手势控制按钮 ---------- */
+  .gbtn {
+    position: fixed; top: 20px; right: 30px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 16px; border-radius: 20px;
+    background: rgba(20,32,58,.55); border: 1px solid rgba(140,170,220,.25);
+    color: var(--ink-dim); font-size: 11px; letter-spacing: 3px;
+    cursor: pointer; user-select: none; backdrop-filter: blur(6px);
+    transition: all .3s ease; font-family: inherit;
+  }
+  .gbtn:hover { border-color: rgba(160,200,255,.5); color: var(--ink); }
+  .gbtn .gdot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ink-faint); transition: all .3s ease;
+  }
+  .gbtn.on { border-color: rgba(120,220,255,.6); color: #aef; }
+  .gbtn.on .gdot { background: #5fe8b0; box-shadow: 0 0 8px #5fe8b0; }
+  .gbtn.busy .gdot { background: var(--gold); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  /* ---------- 摄像头预览窗 ---------- */
+  .gpanel {
+    position: fixed; right: 30px; bottom: 44px; width: 240px;
+    border: 1px solid rgba(140,170,220,.25); border-radius: 8px;
+    background: rgba(8,14,30,.85); overflow: hidden;
+    opacity: 0; pointer-events: none; transform: translateY(8px);
+    transition: all .4s ease;
+  }
+  .gpanel.show { opacity: 1; transform: translateY(0); }
+  .gpanel video { display: none; }
+  .gpanel canvas { display: block; width: 240px; height: 180px; }
+  .gpanel .gst {
+    padding: 7px 10px; font-size: 10px; letter-spacing: 2px;
+    color: var(--ink-dim); text-align: center;
+    border-top: 1px solid rgba(140,170,220,.15);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .gpanel .gst b { color: #8fd8ff; font-weight: 500; }
+
+  /* ---------- 缩放按钮 ---------- */
+  .zoombox {
+    position: fixed; right: 30px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .zbtn {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(20,32,58,.55); border: 1px solid rgba(140,170,220,.25);
+    color: var(--ink-dim); font-size: 16px; line-height: 1;
+    cursor: pointer; user-select: none; backdrop-filter: blur(6px);
+    transition: all .3s ease; font-family: inherit;
+  }
+  .zbtn:hover { border-color: rgba(160,200,255,.5); color: var(--ink); }
+  .zbtn:active { transform: scale(.92); }
+
+  /* ---------- 街道级测绘提示条 ---------- */
+  #streetChip {
+    position: fixed; top: 52px; left: 50%; transform: translateX(-50%) translateY(-6px);
+    padding: 6px 18px; border-radius: 16px;
+    background: rgba(10,22,42,.72); border: 1px solid rgba(110,210,255,.35);
+    color: #9fdcf5; font-size: 11px; letter-spacing: 3px; white-space: nowrap;
+    cursor: pointer; user-select: none; backdrop-filter: blur(6px);
+    opacity: 0; pointer-events: none; transition: all .5s ease;
+    box-shadow: 0 0 18px rgba(80,180,255,.12);
+  }
+  #streetChip.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  #streetChip:hover { border-color: rgba(150,230,255,.7); color: var(--ink); }
+
+  /* ---------- 音效按钮（复用手势按钮样式） ---------- */
+  #sfxBtn { top: 64px; }
+  #sfxBtn.on { border-color: rgba(140,230,180,.55); color: #bfe9d4; }
+
+  /* ---------- 城市搜索框 ---------- */
+  .searchbox { margin-bottom: 9px; }
+  .searchbox input {
+    width: 100%; padding: 6px 10px; border-radius: 6px;
+    background: rgba(16,28,52,.6); border: 1px solid rgba(140,170,220,.22);
+    color: var(--ink); font-size: 11px; letter-spacing: 2px; outline: none;
+    font-family: inherit; backdrop-filter: blur(6px);
+    transition: border-color .3s ease;
+  }
+  .searchbox input::placeholder { color: var(--ink-faint); letter-spacing: 3px; }
+  .searchbox input:focus { border-color: rgba(150,200,255,.55); }
+
+  /* ---------- 城市信息卡 ---------- */
+  .info-card {
+    position: fixed; left: 30px; bottom: 64px; width: 236px;
+    background: rgba(8,16,32,.85); border: 1px solid rgba(140,170,220,.28);
+    border-radius: 10px; padding: 12px 14px; backdrop-filter: blur(8px);
+    opacity: 0; pointer-events: none; transform: translateY(10px);
+    transition: all .35s ease; user-select: none;
+  }
+  .info-card.show { opacity: 1; pointer-events: auto; transform: none; }
+  .ic-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  #icZh { font-family: "Songti SC", "STSong", serif; font-size: 17px; letter-spacing: 4px; color: var(--ink); }
+  #icEn { font-size: 9px; letter-spacing: 2px; color: var(--ink-dim); flex: 1; }
+  .ic-close { cursor: pointer; color: var(--ink-faint); font-size: 12px; padding: 0 2px; }
+  .ic-close:hover { color: var(--ink); }
+  .ic-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 3.5px 0; border-bottom: 1px solid rgba(140,165,205,.08);
+  }
+  .ic-row:last-child { border-bottom: none; }
+  .ic-row .k { font-size: 10px; letter-spacing: 2px; color: var(--ink-faint); }
+  .ic-row .v {
+    font-family: "SF Mono", "Menlo", monospace;
+    font-size: 11px; color: var(--ink); letter-spacing: .5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- 移动端适配 ---------- */
+  @media (max-width: 768px) {
+    .top-label { font-size: 9px; letter-spacing: 4px; top: 12px; }
+    .brand { top: 14px; left: 14px; }
+    .brand h1 { font-size: 15px; letter-spacing: 6px; }
+    .brand p { margin-top: 4px; font-size: 8px; letter-spacing: 2px; }
+    .panel { top: 74px; left: 14px; width: 140px; }
+    .row { padding: 2.5px 0; }
+    .row .k, .row .v { font-size: 9px; }
+    .gbtn { top: 12px; right: 12px; padding: 5px 10px; font-size: 9px; letter-spacing: 2px; }
+    .zoombox { right: 12px; gap: 6px; }
+    .zbtn { width: 40px; height: 40px; font-size: 18px; }
+    .gpanel { right: 12px; bottom: 34px; width: 150px; }
+    .gpanel canvas { width: 150px; height: 112px; }
+    #sfxBtn { top: 52px; right: 12px; }
+    .info-card { left: 14px; bottom: 90px; width: 200px; padding: 10px 12px; }
+    .searchbox input { padding: 4px 8px; font-size: 10px; }
+    .hint { display: none; }
+    #streetChip { font-size: 9px; letter-spacing: 1.5px; padding: 5px 12px; top: 40px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+
+<div class="top-label">实 时 测 绘 中</div>
+
+<div id="streetChip">▼ 街道级测绘</div>
+
+<div class="brand">
+  <h1>深空制图仪</h1>
+  <p>手控地球 · 第一号</p>
+</div>
+
+<div class="panel">
+  <div class="searchbox">
+    <input id="citySearch" list="cityList" placeholder="搜索城市 ⌕" autocomplete="off">
+    <datalist id="cityList">
+      <option value="东京">TOKYO</option>
+      <option value="大阪">OSAKA</option>
+      <option value="北京">BEIJING</option>
+      <option value="上海">SHANGHAI</option>
+      <option value="香港">HONG KONG</option>
+      <option value="新加坡">SINGAPORE</option>
+      <option value="悉尼">SYDNEY</option>
+      <option value="孟买">MUMBAI</option>
+      <option value="迪拜">DUBAI</option>
+      <option value="莫斯科">MOSCOW</option>
+      <option value="伦敦">LONDON</option>
+      <option value="巴黎">PARIS</option>
+      <option value="开罗">CAIRO</option>
+      <option value="纽约">NEW YORK</option>
+      <option value="洛杉矶">LOS ANGELES</option>
+      <option value="圣保罗">SAO PAULO</option>
+      <option value="约翰内斯堡">JOHANNESBURG</option>
+      <option value="墨西哥城">MEXICO CITY</option>
+    </datalist>
+  </div>
+  <div class="row"><span class="k">经度</span><span class="v" id="v-lon">106.8° E</span></div>
+  <div class="row"><span class="k">纬度</span><span class="v" id="v-lat">23.3° N</span></div>
+  <div class="row"><span class="k">海拔</span><span class="v" id="v-alt">6.72 km</span></div>
+  <div class="row"><span class="k">气压</span><span class="v" id="v-pre">98.0 kPa</span></div>
+  <div class="row"><span class="k">天气</span><span class="v" id="v-wx">—</span></div>
+  <div class="row"><span class="k">观测</span><span class="v" id="v-obs">掠地中 · 1 月球</span></div>
+  <div class="row"><span class="k">信号</span><span class="v" id="v-sig">13,434</span></div>
+  <div class="row"><span class="k">节点</span><span class="v" id="v-node">1,144</span></div>
+  <div class="row"><span class="k">航线</span><span class="v" id="v-route">96</span></div>
+  <div class="row"><span class="k">航班</span><span class="v" id="v-fly">—</span></div>
+  <div class="row"><span class="k">卫星</span><span class="v" id="v-sat">3 颗</span></div>
+  <div class="row"><span class="k">观测站</span><span class="v" id="v-station">263 座</span></div>
+  <div class="row"><span class="k">事件</span><span class="v" id="v-event">平静</span></div>
+  <div class="row"><span class="k">冷却</span><span class="v" id="v-cool">72%</span></div>
+</div>
+
+<div class="city-tag" id="cityTag">
+  <div class="leader">···· · ····</div>
+  <div class="zh" id="tagZh">东京</div>
+  <div class="en" id="tagEn">TOKYO</div>
+</div>
+
+<div class="event-card" id="eventCard">
+  <div class="zh" id="evZh">流星雨</div>
+  <div class="en" id="evEn">METEOR SHOWER</div>
+</div>
+
+<div class="status">
+  <div class="line1">系统自检完成 · 全部观测站在线 · <span class="bolt">⚡</span> 数据链路正常 · 深空制图仪 v1.0</div>
+  <div class="line2"><span class="marquee" id="marquee"></span></div>
+</div>
+<div class="hint">拖拽旋转 · 滚轮缩放 · 点城市看信息 · 手势控制见右上</div>
+
+<button class="gbtn" id="gestureBtn"><span class="gdot"></span>手势控制</button>
+<button class="gbtn" id="sfxBtn"><span class="gdot"></span><span id="sfxLabel">音效关</span></button>
+
+<div class="info-card" id="infoCard">
+  <div class="ic-head"><span id="icZh">东京</span><span id="icEn">TOKYO</span><span class="ic-close" id="icClose">✕</span></div>
+  <div class="ic-row"><span class="k">坐标</span><span class="v" id="icPos">—</span></div>
+  <div class="ic-row"><span class="k">当地时间</span><span class="v" id="icTime">—</span></div>
+  <div class="ic-row"><span class="k">实时天气</span><span class="v" id="icWx">—</span></div>
+  <div class="ic-row"><span class="k">空域航班</span><span class="v" id="icFly">—</span></div>
+</div>
+<div class="zoombox">
+  <button class="zbtn" id="zoomIn" title="放大">+</button>
+  <button class="zbtn" id="zoomOut" title="缩小">−</button>
+</div>
+<div class="gpanel" id="gesturePanel">
+  <video id="gvideo" playsinline muted></video>
+  <canvas id="gcanvas" width="240" height="180"></canvas>
+  <div class="gst" id="gstatus">初始化…</div>
+</div>
+
+<script src="./lib/three.min.js"></script>
+<script src="./lib/OrbitControls.umd.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

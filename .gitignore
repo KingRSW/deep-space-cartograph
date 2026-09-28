@@ -1,0 +1,4 @@
+# 单文件构建产物（由 build.js 生成，不入库）
+深空制图仪.html
+node_modules/
+.DS_Store
